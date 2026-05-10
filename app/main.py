@@ -2,16 +2,20 @@ import uvicorn
 from fastapi import FastAPI, Request
 from contextlib import asynccontextmanager
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 from starlette_admin.contrib.sqla import Admin, ModelView
 from app.admin import UserAdminView, DashboardView, AdminAuthProvider
 from app.api.v1.router import api_router
+from app.portals.router import router as portal_router
 from app.core.config import settings
 from app.core.errors import NotFoundError, ConflictError, DomainError
+from app.logging import logger
 from app.db.session import Base, engine
 from sqlalchemy import select
 from app.models.family import Family, Member
-from app.models.user import User
+from app.models.user import User, BlockHeadPermission
+from app.models.update_request import UpdateRequest
 from app.models.lookups import (
     City,
     Governor,
@@ -21,11 +25,10 @@ from app.models.lookups import (
     ShelterCenter,
 )
 
-# Import models to ensure tables are created
-# from app.models import family
 from app.db.session import AsyncSessionLocal
 from app.core.security import get_password_hash
 from app.models.enums import UserRole
+from app.seed import seed_all
 
 # ── Startup validation ────────────────────────────────────────────────────────
 if settings.SECRET_KEY == "change-me":
@@ -67,7 +70,9 @@ async def create_tables():
 async def lifespan(app: FastAPI):
     await create_tables()
     await seed_superadmin()
-    yield  # Control returns to FastAPI to start the server
+    async with AsyncSessionLocal() as db:
+        await seed_all(db)
+    yield
 
 
 app = FastAPI(
@@ -124,6 +129,8 @@ admin.add_view(ModelView(ShelterBlock))
 
 admin.mount_to(app)
 
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+app.include_router(portal_router, prefix="/portal")
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
 

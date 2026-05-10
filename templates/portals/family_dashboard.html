@@ -1,0 +1,107 @@
+{% extends "portals/base.html" %}
+{% block title %}My Family{% endblock %}
+{% block content %}
+<h2>🏠 Family Record</h2>
+<div class="card">
+  <div class="card-body">
+    <p><strong>Family ID:</strong> {{ family.id }}</p>
+    <p><strong>Head ID:</strong> {{ family.head_id }}</p>
+    <p><strong>Phone:</strong> {{ family.primary_phone_number }}</p>
+    <p><strong>Residency:</strong> {{ family.residency_status }}</p>
+    <p><strong>Housing:</strong> {{ family.housing_type }}</p>
+    <p><strong>Members:</strong> {{ family.members|length }}</p>
+  </div>
+</div>
+
+<h3>Members</h3>
+<table class="table">
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>Name</th>
+      <th>Gender</th>
+      <th>DOB</th>
+      <th>Health</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for member in family.members %}
+    <tr>
+      <td>{{ member.id }}</td>
+      <td>{{ member.full_name }}</td>
+      <td>{{ member.gender }}</td>
+      <td>{{ member.date_of_birth }}</td>
+      <td>
+        {% if member.disabled %}🩼{% endif %}
+        {% if member.injured %}🩹{% endif %}
+        {% if member.pregnant %}🤰{% endif %}
+        {% if member.has_chronic_disease %}💊{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h3>Request Update</h3>
+<p class="text-muted">Submit changes to your family record. A manager will review your request.</p>
+<form method="POST" action="/portal/family/request-update">
+  <div class="stats-grid">
+    <div>
+      <label>Primary Phone</label>
+      <input type="text" name="primary_phone" value="{{ family.primary_phone_number }}" placeholder="New phone number">
+    </div>
+    <div>
+      <label>Secondary Phone</label>
+      <input type="text" name="secondary_phone" value="{{ family.secondary_phone_number or '' }}" placeholder="New secondary phone">
+    </div>
+    <div>
+      <label>Housing Type</label>
+      <select name="housing_type">
+        <option value="">No change</option>
+        <option value="tent" {% if family.housing_type == 'tent' %}selected{% endif %}>Tent</option>
+        <option value="house" {% if family.housing_type == 'house' %}selected{% endif %}>House</option>
+        <option value="caravan" {% if family.housing_type == 'caravan' %}selected{% endif %}>Caravan</option>
+        <option value="garage" {% if family.housing_type == 'garage' %}selected{% endif %}>Garage</option>
+        <option value="room" {% if family.housing_type == 'room' %}selected{% endif %}>Room</option>
+        <option value="school" {% if family.housing_type == 'school' %}selected{% endif %}>School</option>
+        <option value="other" {% if family.housing_type == 'other' %}selected{% endif %}>Other</option>
+      </select>
+    </div>
+    <div>
+      <label>Residency Status</label>
+      <select name="residency_status">
+        <option value="">No change</option>
+        <option value="displaced" {% if family.residency_status == 'displaced' %}selected{% endif %}>Displaced</option>
+        <option value="resident" {% if family.residency_status == 'resident' %}selected{% endif %}>Resident</option>
+      </select>
+    </div>
+  </div>
+  <div>
+    <label>Additional Notes (optional)</label>
+    <textarea name="notes" rows="3" placeholder="Any other changes or notes..."></textarea>
+  </div>
+  <button type="submit" class="btn btn-primary" style="margin-top:0.5rem">Submit Update Request</button>
+</form>
+
+{% if requests %}
+<h3>My Previous Requests</h3>
+<table class="table">
+  <thead>
+    <tr><th>Status</th><th>Details</th><th>Submitted</th></tr>
+  </thead>
+  <tbody>
+    {% for req in requests %}
+    <tr>
+      <td>
+        {% if req.status == "pending" %}⏳ Pending
+        {% elif req.status == "approved" %}✅ Approved
+        {% else %}❌ Rejected{% endif %}
+      </td>
+      <td><pre>{{ req.requested_changes }}</pre></td>
+      <td>{{ req.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

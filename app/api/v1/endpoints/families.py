@@ -1,4 +1,3 @@
-# from typing import Sequence
 from typing import Sequence
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,7 +40,7 @@ async def create_new_family(
 
 
 @router.get("/{family_id}", response_model=FamilyResponse)
-def read_family(
+async def read_family(
     family_id: int,
     db: AsyncSession = Depends(get_db),
     _=Depends(
@@ -56,7 +55,7 @@ def read_family(
     Get a specific family by ID to see the calculated stats and members.
     """
     try:
-        family = family_service.get_family(db=db, family_id=family_id)
+        family = await family_service.get_family(db=db, family_id=family_id)
     except NotFoundError as e:
         raise HTTPException(status_code=404, detail=e.message)
     return family

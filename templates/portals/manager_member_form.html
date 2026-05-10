@@ -1,0 +1,24 @@
+{% extends "portals/base.html" %}
+{% block title %}Add Member to Family #{{ family.id }}{% endblock %}
+{% block content %}
+<h2>Add Member to Family #{{ family.id }}</h2>
+<form method="POST" action="/portal/manager/families/{{ family.id }}/members/add">
+  <div class="stats-grid">
+    <div><label>National ID *</label><input type="text" name="member_id" required></div>
+    <div><label>Full Name *</label><input type="text" name="full_name" required></div>
+    <div><label>Gender *</label><select name="gender">{% for g in lookups.genders %}<option value="{{ g.value }}">{{ g.value }}</option>{% endfor %}</select></div>
+    <div><label>Marital Status *</label><select name="marital_status">{% for m in lookups.marital_statuses %}<option value="{{ m.value }}">{{ m.value }}</option>{% endfor %}</select></div>
+    <div><label>Date of Birth *</label><input type="date" name="date_of_birth" required></div>
+    <div><label>Relationship *</label><select name="relationship_to_head_id">{% for r in lookups.relationships %}<option value="{{ r.id }}">{{ r.name_en }}</option>{% endfor %}</select></div>
+    <div><label>Disabled</label><input type="checkbox" name="disabled"></div>
+    <div><label>Injured</label><input type="checkbox" name="injured"></div>
+    <div><label>Chronic Disease</label><input type="checkbox" name="chronic"></div>
+    <div><label>Pregnant</label><input type="checkbox" name="pregnant"></div>
+    <div><label>Breastfeeding</label><input type="checkbox" name="breastfeeding"></div>
+  </div>
+  <p style="margin-top:1.5rem">
+    <button type="submit" class="btn btn-primary">Add Member</button>
+    <a href="/portal/manager/families/{{ family.id }}" class="btn">Cancel</a>
+  </p>
+</form>
+{% endblock %}

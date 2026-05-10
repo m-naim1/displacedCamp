@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, ConfigDict
 
 from app.models.enums import Gender, HousingType, MaritalStatus, ResidencyStatus
 
@@ -52,6 +52,7 @@ class MemberBase(BaseModel):
     gender: Gender
     marital_status: MaritalStatus
     date_of_birth: date
+    relationship_to_head_id: int = 1
 
     # Health & Status
     has_chronic_disease: bool = False
@@ -93,9 +94,9 @@ class MemberCreate(MemberBase):
 class MemberResponse(MemberBase):
     family_id: int
 
-    class Config:
+    model_config = ConfigDict(
         from_attributes = True
-
+    )
 
 class MemberUpdate(BaseModel):
     name: Optional[str] = None
@@ -147,7 +148,6 @@ class FamilyBase(BaseModel):
     current_city_id: int
     current_shelter_center_id: int
     shelter_block_id: int
-    shelter_type_id: int
     shelter_quality_id: Optional[int] = None
     # --- Validators ---
 
@@ -190,9 +190,9 @@ class FamilyResponse(FamilyBase):
 
     members: List[MemberResponse]
 
-    class Config:
+    model_config = ConfigDict(
         from_attributes = True
-
+    )
 
 class FamilyUpdate(BaseModel):
     # Only allow updating fields that change over time
@@ -208,6 +208,5 @@ class FamilyUpdate(BaseModel):
     current_city_id: Optional[int] = None
     current_shelter_center_id: Optional[int] = None
     shelter_block_id: Optional[int] = None
-    shelter_type_id: Optional[int] = None
     shelter_quality_id: Optional[int] = None
     members: Optional[List[MemberUpdate]] = None

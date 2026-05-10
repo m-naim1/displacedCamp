@@ -2,6 +2,7 @@ from typing import Sequence
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.security import get_password_hash, verify_password
+from app.logging import logger
 from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate
 from app.core.errors import NotFoundError, ConflictError
@@ -55,6 +56,7 @@ async def create_user(db: AsyncSession, user_in: UserCreate) -> User:
     db.add(user)
     await db.commit()
     await db.refresh(user)
+    logger.info(f"Created user {user.username} (role: {user.role})")
     return user
 
 
@@ -75,6 +77,7 @@ async def update_user(db: AsyncSession, user_id: int, user_in: UserUpdate) -> Us
         user.hashed_password = get_password_hash(user_in.password)
     await db.commit()
     await db.refresh(user)
+    logger.info(f"Updated user #{user_id} ({user.username})")
     return user
 
 
@@ -97,6 +100,7 @@ async def deactivate_user(db: AsyncSession, user_id: int) -> None:
         return
     user.is_active = False
     await db.commit()
+    logger.info(f"Deactivated user #{user_id} ({user.username})")
 
 
 async def activate_user(db: AsyncSession, user_id: int) -> None:
@@ -105,3 +109,4 @@ async def activate_user(db: AsyncSession, user_id: int) -> None:
         return
     user.is_active = True
     await db.commit()
+    logger.info(f"Activated user #{user_id} ({user.username})")

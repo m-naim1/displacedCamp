@@ -8,6 +8,7 @@ from starlette_admin.exceptions import LoginFailed
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import get_password_hash, verify_password
+from app.logging import logger
 from app.models.enums import UserRole
 from app.services import user_service, family_service
 
@@ -25,12 +26,16 @@ class AdminAuthProvider(AuthProvider):
         user = await user_service.get_user_by_username(db, username)
 
         if not user or not user.is_active:
+            logger.warning(f"Failed admin login attempt for username: {username}")
             raise LoginFailed("Invalid username or password")
         if not verify_password(password, user.hashed_password):
+            logger.warning(f"Failed admin login attempt for username: {username}")
             raise LoginFailed("Invalid username or password")
         if user.role not in (UserRole.SUPERADMIN, UserRole.MANAGER):
+            logger.warning(f"Unauthorized admin login attempt by {username} (role: {user.role})")
             raise LoginFailed("You do not have permission to access the admin panel")
 
+        logger.info(f"Admin login: {username} ({user.role})")
         request.session.update(
             {
                 "admin_username": username,

@@ -47,3 +47,15 @@ class User(Base):
                     "SUPERADMIN and MANAGER users should not have a scope assigned"
                 )
         return role
+
+
+class BlockHeadPermission(Base):
+    __tablename__ = "block_head_permissions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id"), unique=True, nullable=False, index=True
+    )
+    can_edit: Mapped[bool] = mapped_column(default=False)
+    can_add: Mapped[bool] = mapped_column(default=False)
+    can_delete: Mapped[bool] = mapped_column(default=False)

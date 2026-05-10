@@ -3,6 +3,7 @@ from typing import Sequence
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import func, select
 from app.core.errors import ConflictError, DomainError, NotFoundError, ValidationError
+from app.logging import logger
 from app.models.enums import Gender
 from app.models.family import Family, Member
 from app.models.lookups import ShelterBlock, ShelterCenter
@@ -94,7 +95,8 @@ async def create_family(db: AsyncSession, family_in: FamilyCreate) -> Family:
             )
         db_members.append(Member(**member_data.model_dump()))
 
-    db_family = Family(**family_in.model_dump())
+    data = family_in.model_dump(exclude={"members"})
+    db_family = Family(**data)
 
     db.add(db_family)
     await db.flush()
@@ -106,6 +108,7 @@ async def create_family(db: AsyncSession, family_in: FamilyCreate) -> Family:
     await db.commit()
     await db.refresh(db_family)
 
+    logger.info(f"Created family #{db_family.id} with {len(db_members)} members (head: {family_in.head_id})")
     return db_family
 
 
@@ -150,6 +153,7 @@ async def update_family(
     await db.commit()
     await db.refresh(family)
 
+    logger.info(f"Updated family #{family_id}")
     return family
 
 
@@ -169,6 +173,7 @@ async def deactivate_family(db: AsyncSession, family_id: int) -> Family:
     db.add(family)
     await db.commit()
     await db.refresh(family)
+    logger.info(f"Archived family #{family_id}")
     return family
 
 
@@ -188,6 +193,7 @@ async def activate_family(db: AsyncSession, family_id: int) -> Family:
     db.add(family)
     await db.commit()
     await db.refresh(family)
+    logger.info(f"Restored family #{family_id}")
     return family
 
 
@@ -211,6 +217,7 @@ async def add_member(
     await db.commit()
     await db.refresh(new_member)
 
+    logger.info(f"Added member #{new_member.id} to family #{family_id}")
     return new_member
 
 
@@ -255,6 +262,7 @@ async def delete_member(db: AsyncSession, member_id: int):
 
     await db.delete(member)
     await db.commit()
+    logger.info(f"Deleted member #{member_id} from family #{member.family_id}")
 
 
 async def get_member(db: AsyncSession, member_id: int) -> Member:
