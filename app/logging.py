@@ -1,6 +1,5 @@
 import logging
 import sys
-from pathlib import Path
 
 FORMAT = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 

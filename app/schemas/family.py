@@ -94,9 +94,8 @@ class MemberCreate(MemberBase):
 class MemberResponse(MemberBase):
     family_id: int
 
-    model_config = ConfigDict(
-        from_attributes = True
-    )
+    model_config = ConfigDict(from_attributes=True)
+
 
 class MemberUpdate(BaseModel):
     name: Optional[str] = None
@@ -190,9 +189,8 @@ class FamilyResponse(FamilyBase):
 
     members: List[MemberResponse]
 
-    model_config = ConfigDict(
-        from_attributes = True
-    )
+    model_config = ConfigDict(from_attributes=True)
+
 
 class FamilyUpdate(BaseModel):
     # Only allow updating fields that change over time

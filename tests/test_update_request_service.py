@@ -2,7 +2,6 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import NotFoundError
-from app.models.update_request import UpdateRequest
 from app.schemas.update_request import UpdateRequestCreate
 from app.services import update_request_service
 

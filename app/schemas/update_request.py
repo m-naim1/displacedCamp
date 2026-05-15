@@ -18,9 +18,8 @@ class UpdateRequestResponse(BaseModel):
     reviewed_at: Optional[datetime] = None
     reviewed_by: Optional[int] = None
 
-    model_config = ConfigDict(
-        from_attributes = True
-    )
+    model_config = ConfigDict(from_attributes=True)
+
 
 class UpdateRequestReview(BaseModel):
     status: str  # approved / rejected

@@ -32,7 +32,9 @@ class AdminAuthProvider(AuthProvider):
             logger.warning(f"Failed admin login attempt for username: {username}")
             raise LoginFailed("Invalid username or password")
         if user.role not in (UserRole.SUPERADMIN, UserRole.MANAGER):
-            logger.warning(f"Unauthorized admin login attempt by {username} (role: {user.role})")
+            logger.warning(
+                f"Unauthorized admin login attempt by {username} (role: {user.role})"
+            )
             raise LoginFailed("You do not have permission to access the admin panel")
 
         logger.info(f"Admin login: {username} ({user.role})")

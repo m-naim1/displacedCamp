@@ -108,7 +108,9 @@ async def create_family(db: AsyncSession, family_in: FamilyCreate) -> Family:
     await db.commit()
     await db.refresh(db_family)
 
-    logger.info(f"Created family #{db_family.id} with {len(db_members)} members (head: {family_in.head_id})")
+    logger.info(
+        f"Created family #{db_family.id} with {len(db_members)} members (head: {family_in.head_id})"
+    )
     return db_family
 
 

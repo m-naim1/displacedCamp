@@ -7,15 +7,12 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette_admin.contrib.sqla import Admin, ModelView
 from app.admin import UserAdminView, DashboardView, AdminAuthProvider
 from app.api.v1.router import api_router
-from app.portals.router import router as portal_router
 from app.core.config import settings
 from app.core.errors import NotFoundError, ConflictError, DomainError
-from app.logging import logger
 from app.db.session import Base, engine
 from sqlalchemy import select
 from app.models.family import Family, Member
-from app.models.user import User, BlockHeadPermission
-from app.models.update_request import UpdateRequest
+from app.models.user import User
 from app.models.lookups import (
     City,
     Governor,
@@ -130,7 +127,6 @@ admin.add_view(ModelView(ShelterBlock))
 admin.mount_to(app)
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
-app.include_router(portal_router, prefix="/portal")
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
 

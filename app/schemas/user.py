@@ -26,9 +26,8 @@ class UserResponse(UserBase):
     id: int
     is_active: bool
 
-    model_config = ConfigDict(
-        from_attributes = True
-    )
+    model_config = ConfigDict(from_attributes=True)
+
 
 class Token(BaseModel):
     access_token: str

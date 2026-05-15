@@ -1,5 +1,4 @@
 import asyncio
-from datetime import date
 from typing import AsyncGenerator
 
 import pytest
@@ -78,7 +77,6 @@ async def manager_user(db: AsyncSession) -> User:
 
 @pytest_asyncio.fixture
 async def block_head_user(db: AsyncSession) -> User:
-    from app.models.lookups import ShelterBlock
     block = ShelterBlock(id=1, code="B1", name_en="Block 1", name_ar="كتلة 1", is_active=True, shelter_center_id=1)
     db.add(block)
     await db.flush()
@@ -96,9 +94,6 @@ async def block_head_user(db: AsyncSession) -> User:
 
 @pytest_asyncio.fixture
 async def sample_lookups(db: AsyncSession):
-    from app.models.lookups import (
-        Governor, City, ShelterCenter, ShelterBlock, ShelterQuality, RelationshipToHead,
-    )
     gov = Governor(id=1, code="GZA", name_en="Gaza", name_ar="غزة", is_active=True)
     city = City(id=1, code="GZA-CITY", name_en="Gaza City", name_ar="مدينة غزة", is_active=True, governor_id=1)
     center = ShelterCenter(id=1, code="C1", name_en="Center 1", name_ar="مركز 1", is_active=True, city_id=1)

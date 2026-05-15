@@ -2,7 +2,6 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import NotFoundError, ConflictError
-from app.models.user import User
 from app.models.enums import UserRole
 from app.schemas.user import UserCreate, UserUpdate
 from app.services import user_service

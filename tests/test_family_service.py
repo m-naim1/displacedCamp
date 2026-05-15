@@ -4,7 +4,6 @@ import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import NotFoundError, ConflictError, DomainError
-from app.models.family import Family, Member
 from app.models.enums import Gender, MaritalStatus, HousingType, ResidencyStatus
 from app.schemas.family import FamilyCreate, FamilyUpdate, MemberCreate, MemberUpdate
 from app.services import family_service

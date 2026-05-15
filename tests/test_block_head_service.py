@@ -1,7 +1,6 @@
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.user import BlockHeadPermission
 from app.services import block_head_service
 
 

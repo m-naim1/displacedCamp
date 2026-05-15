@@ -14,3 +14,4 @@ wheels/
 *.log
 *.db
 .env
+PLAN.md

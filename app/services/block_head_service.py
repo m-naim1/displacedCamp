@@ -1,7 +1,6 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.errors import NotFoundError
 from app.logging import logger
 from app.models.user import BlockHeadPermission
 
@@ -34,5 +33,7 @@ async def upsert_permission(
         db.add(perm)
     await db.commit()
     await db.refresh(perm)
-    logger.info(f"Upserted permissions for block head #{user_id}: edit={can_edit} add={can_add} delete={can_delete}")
+    logger.info(
+        f"Upserted permissions for block head #{user_id}: edit={can_edit} add={can_add} delete={can_delete}"
+    )
     return perm

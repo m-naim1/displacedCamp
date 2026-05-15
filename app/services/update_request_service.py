@@ -59,5 +59,7 @@ async def review_request(
     req.reviewed_by = reviewed_by
     await db.commit()
     await db.refresh(req)
-    logger.info(f"Update request #{request_id} reviewed as {status} by user #{reviewed_by}")
+    logger.info(
+        f"Update request #{request_id} reviewed as {status} by user #{reviewed_by}"
+    )
     return req
