@@ -2,7 +2,6 @@ import uvicorn
 from fastapi import FastAPI, Request
 from contextlib import asynccontextmanager
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 from starlette_admin.contrib.sqla import Admin, ModelView
 from app.admin import UserAdminView, DashboardView, AdminAuthProvider
@@ -126,7 +125,6 @@ admin.add_view(ModelView(ShelterBlock))
 
 admin.mount_to(app)
 
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
 

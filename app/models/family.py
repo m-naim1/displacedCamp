@@ -72,16 +72,6 @@ class Family(Base):
     shelter_quality_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("shelter_quality.id"), nullable=True
     )
-    # move calculations to services
-    # # --- stats ---
-    # total_members_count: Mapped[int] = mapped_column(Integer, default=1)
-    # displacement_status: Mapped[DisplacementStatus] = mapped_column(Enum(DisplacementStatus,native_enum=False))
-    #
-    # # --- vulnerabilities ---
-    # disabled_count: Mapped[int] = mapped_column(Integer, default=0)
-    # injured_count: Mapped[int] = mapped_column(Integer, default=0)
-    # chronic_disease_count: Mapped[int] = mapped_column(Integer, default=0)
-    # pregnant_count: Mapped[int] = mapped_column(Integer, default=0)
 
     is_active: Mapped[bool] = mapped_column(
         Boolean, default=True, index=True
