@@ -5,7 +5,9 @@ from sqlalchemy.dialects.postgresql import insert
 from app.core.config import settings
 from app.core.security import get_password_hash
 from app.db.session import AsyncSessionLocal, Base, engine
+from app.models.audit import AuditLog  # noqa: F401
 from app.models.enums import UserRole
+from app.models.family import Family, FamilyUpdateRequest, Member  # noqa: F401
 from app.models.lookups import (
     City,
     Governor,
@@ -414,7 +416,7 @@ async def seed_all():
         # Seed Superadmin
         hashed_pw = await get_password_hash(settings.ADMIN_PASSWORD)
         admin_data = {
-            "username": settings.ADMIN_PASSWORD,
+            "username": settings.ADMIN_USERNAME,
             "email": settings.ADMIN_EMAIL,
             "full_name": "System Admin",
             "hashed_password": hashed_pw,

@@ -41,6 +41,10 @@ class MemberFilterParams:
     family_id: int | None = Query(default=None)
     gender: Gender | None = Query(default=None)
 
+    # National ID lookup: exact or prefix match (staff commonly have a
+    # partial ID from a paper form)
+    national_id: str | None = Query(default=None)
+
     # --- MULTI-SELECT FILTERS ---
     marital_status: list[MaritalStatus] | None = Query(default=None)
     relationship_to_head_id: list[int] | None = Query(default=None)

@@ -92,6 +92,5 @@ class MemberReportRow(BaseModel):
     breastfeeding: bool = False
     accompanied_child: bool = False
     family_is_active: bool = False
-    source_device_id: str | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None

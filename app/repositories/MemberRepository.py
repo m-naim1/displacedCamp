@@ -1,4 +1,4 @@
-from sqlalchemy import and_, case, func, or_, select
+from sqlalchemy import String, and_, case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import aliased, joinedload
 
@@ -76,10 +76,11 @@ class MemberRepository(IMemberRepository):
     async def get_all(
         self, filters: MemberFilterParams, skip: int = 0, limit: int = 100
     ) -> list[Member]:
-        query = select(Member)
+        query = select(Member).options(
+            joinedload(Member.family).joinedload(Family.head)
+        )
 
         if filters.current_shelter_center_id or filters.shelter_block_id:
-            query = query.options(joinedload(Member.family))
             if filters.current_shelter_center_id:
                 query = query.where(
                     Family.current_shelter_center_id.in_(
@@ -95,6 +96,11 @@ class MemberRepository(IMemberRepository):
             query = query.where(Member.family_id == filters.family_id)
         if filters.gender:
             query = query.where(Member.gender == filters.gender)
+        if filters.national_id:
+            query = query.where(
+                # Member.id is an int; cast to varchar for prefix search
+                func.cast(Member.id, String).like(f"{filters.national_id}%")
+            )
 
         # --- MULTI-VALUE FILTERS (.in_) ---
         if filters.marital_status:
@@ -180,6 +186,26 @@ class MemberRepository(IMemberRepository):
             "year", func.age(func.current_date(), Member.date_of_birth)
         )
 
+        # Scope applied to the "has adult" subquery so it never scans the
+        # whole members table when the report is limited to a shelter/block.
+        scoped_family_ids = select(Family.id)
+        if shelter_center_id:
+            scoped_family_ids = scoped_family_ids.where(
+                Family.current_shelter_center_id == shelter_center_id
+            )
+        if shelter_block_ids:
+            scoped_family_ids = scoped_family_ids.where(
+                Family.shelter_block_id.in_(shelter_block_ids)
+            )
+        if selected_ids:
+            scoped_family_ids = scoped_family_ids.where(
+                Family.id.in_(
+                    select(Family.id).join(Member, Member.family_id == Family.id).where(
+                        Member.id.in_(selected_ids)
+                    )
+                )
+            )
+
         # Reuse the logic to check if family has an adult
         has_adult_subq = (
             select(
@@ -198,6 +224,7 @@ class MemberRepository(IMemberRepository):
                     )
                 ).label("has_adult"),
             )
+            .where(Member.family_id.in_(scoped_family_ids))
             .group_by(Member.family_id)
             .subquery()
         )

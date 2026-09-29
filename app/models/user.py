@@ -1,7 +1,7 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String
-from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, event
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from app.db.session import Base
@@ -44,21 +44,28 @@ class User(Base):
         "ShelterCenter", foreign_keys=[shelter_id], uselist=False
     )
 
-    @validates("role")
-    def validate_scope(self, key, role):
-        if role == UserRole.BLOCK_HEAD and self.block_id is None:
+    def _validate_scope(self):
+        """Enforces role/scope consistency.
+        Runs at flush time (before_insert / before_update) so it is independent
+        of the order in which attributes are assigned during construction.
+        """
+        if self.role == UserRole.BLOCK_HEAD and self.block_id is None:
             raise ValueError("BLOCK_HEAD users must have a block assigned")
-        if role in (UserRole.SUPERADMIN, UserRole.MANAGER):
+        if self.role in (UserRole.SUPERADMIN, UserRole.MANAGER):
             if self.block_id is not None:
                 raise ValueError(
                     "SUPERADMIN and MANAGER users should not have a block assigned"
                 )
-        if role == UserRole.MANAGER and self.shelter_id is None:
+        if self.role == UserRole.MANAGER and self.shelter_id is None:
             raise ValueError("MANAGER users must have a shelter assigned")
-        if role in (UserRole.SUPERADMIN, UserRole.BLOCK_HEAD):
+        if self.role in (UserRole.SUPERADMIN, UserRole.BLOCK_HEAD):
             if self.shelter_id is not None:
                 raise ValueError(
-                    "SUPERADMIN and MANAGER users should not have a shelter assigned"
+                    "SUPERADMIN and BLOCK_HEAD users should not have a shelter assigned"
                 )
 
-        return role
+
+@event.listens_for(User, "before_insert")
+@event.listens_for(User, "before_update")
+def _validate_user_scope(mapper, connection, target):
+    target._validate_scope()

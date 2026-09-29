@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 from datetime import date, datetime
 
 from sqlalchemy import (
+    JSON,
     Boolean,
     Date,
     DateTime,
@@ -108,6 +111,10 @@ class Family(Base):
         foreign_keys=[shelter_quality_id]
     )
 
+    @property
+    def head_name(self) -> str | None:
+        return self.head.full_name if self.head else None
+
 
 class Member(Base):
     __tablename__ = "members"
@@ -152,6 +159,10 @@ class Member(Base):
         viewonly=True,
     )
 
+    @property
+    def family_head_name(self) -> str | None:
+        return self.family.head.full_name if self.family and self.family.head else None
+
 
 class FamilyUpdateRequest(Base):
     __tablename__ = "family_update_requests"
@@ -164,7 +175,7 @@ class FamilyUpdateRequest(Base):
         Enum(UpdateRequestType, native_enum=False)
     )
     payload: Mapped[dict] = mapped_column(
-        JSONB, nullable=False
+        JSON().with_variant(JSONB, "postgresql"), nullable=False
     )  # Stores the proposed JSON changes
     status: Mapped[UpdateRequestStatus] = mapped_column(
         Enum(UpdateRequestStatus, native_enum=False),

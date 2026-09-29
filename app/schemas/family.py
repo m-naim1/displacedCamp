@@ -7,6 +7,7 @@ from app.models.enums import (
     HousingType,
     MaritalStatus,
     ResidencyStatus,
+    UpdateRequestStatus,
     UpdateRequestType,
 )
 
@@ -23,7 +24,8 @@ def validate_palestine_id(value: int) -> int:
     # 1. Check Length
     if len(s_id) != 9 or s_id[0] not in "4789":
         raise ValueError(
-            "ID number must be exactly 9 digits long and start with one of these numbers '4789'."
+            "ID number must be exactly 9 digits long and start with one of "
+            "these numbers '4789'."
         )
 
     # 2. Luhn Checksum
@@ -90,11 +92,12 @@ class MemberCreate(MemberBase):
 
 class MemberResponse(MemberBase):
     family_id: int
+    family_head_name: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
 
-class MemberUpdate(MemberBase):
+class MemberUpdate(BaseModel):
     full_name: str | None = None
     # We usually don't update IDs or Date of Birth as they are constants,
     # but we can allow fixing typos if needed.
@@ -160,7 +163,8 @@ class FamilyCreate(FamilyBase):
 
         if head_id not in member_ids:
             raise ValueError(
-                f"The Head of Family ID ({head_id}) must be included in the members list."
+                f"The Head of Family ID ({head_id}) must be included "
+                "in the members list."
             )
         return members
 
@@ -179,28 +183,28 @@ class FamilyResponse(FamilyBase):
 
 
 class FamilyListResponse(FamilyBase):
-    """Used for listing multiple families. Excludes members to prevent massive payloads and async lazy-load crashes."""
+    """Lists families. Excludes members to avoid heavy payloads and lazy-load issues."""
 
     id: int
     is_active: bool
     created_at: datetime
     archived_at: datetime | None = None
+    head_name: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class FamilyUpdate(BaseModel):
-    # Only allow updating fields that change over time
+    # Only allow updating fields that change over time.
+    # Current governor/city is derived from current_shelter_center_id;
+    # original governorate is derived from original_city_id.
     primary_phone_number: str | None = None
     secondary_phone_number: str | None = None
     residency_status: ResidencyStatus | None = None
     housing_type: HousingType | None = None
     female_headed: bool | None = None
     child_headed: bool | None = None
-    original_governor_id: int | None = None
     original_city_id: int | None = None
-    current_governor_id: int | None = None
-    current_city_id: int | None = None
     current_shelter_center_id: int | None = None
     shelter_block_id: int | None = None
     shelter_quality_id: int | None = None
@@ -210,3 +214,16 @@ class FamilyUpdate(BaseModel):
 class UpdateRequestCreate(BaseModel):
     request_type: UpdateRequestType
     payload: dict
+
+
+class UpdateRequestResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    family_id: int
+    request_type: UpdateRequestType
+    payload: dict
+    status: UpdateRequestStatus
+    reviewed_by_id: int | None = None
+    reviewed_at: datetime | None = None
+    created_at: datetime | None = None

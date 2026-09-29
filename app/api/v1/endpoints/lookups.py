@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db, require_role
@@ -11,6 +11,7 @@ from app.models.lookups import (
     ShelterCenter,
     ShelterQuality,
 )
+from app.models.user import User
 from app.repositories.lookupRepository import LookupRepository
 from app.schemas.lookups import (
     CityCreate,
@@ -34,6 +35,7 @@ def register_lookup_routes(
     model,
     create_schema,
     response_schema,
+    create_roles: tuple[UserRole, ...] = (UserRole.SUPERADMIN,),
 ):
     @router.get(
         f"/{prefix}",
@@ -65,9 +67,19 @@ def register_lookup_routes(
     async def create_item(
         data: create_schema,  # type: ignore[valid-type]
         db: AsyncSession = Depends(get_db),
-        _=Depends(require_role(UserRole.SUPERADMIN)),
+        current_user=Depends(require_role(*create_roles)),
     ):
         service = LookupService(model, LookupRepository(model, db))
+        if (
+            prefix == "shelter-blocks"
+            and isinstance(current_user, User)
+            and current_user.role == UserRole.MANAGER
+            and data.shelter_center_id != current_user.shelter_id
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Blocks can only be created within the manager's shelter center",
+            )
         return await service.create(data)
 
     @router.put(
@@ -112,6 +124,7 @@ register_lookup_routes(
     ShelterBlock,
     ShelterBlockCreate,
     ShelterBlockResponse,
+    create_roles=(UserRole.SUPERADMIN, UserRole.MANAGER),
 )
 register_lookup_routes(
     router,

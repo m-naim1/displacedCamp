@@ -4,7 +4,12 @@ from pydantic import ValidationError as PydanticValidationError
 
 from app.core.errors import DomainError, NotFoundError, ValidationError
 from app.core.scoping import verify_family_scope
-from app.models.enums import UpdateRequestStatus, UpdateRequestType, UserRole
+from app.models.enums import (
+    AuditAction,
+    UpdateRequestStatus,
+    UpdateRequestType,
+    UserRole,
+)
 from app.models.family import FamilyUpdateRequest
 from app.models.user import User
 from app.repositories.base import (
@@ -13,6 +18,7 @@ from app.repositories.base import (
     IMemberRepository,
 )
 from app.schemas.family import FamilyUpdate, MemberCreate, UpdateRequestCreate
+from app.services.audit_service import AuditService
 
 logger = structlog.getLogger()
 
@@ -23,13 +29,18 @@ class UpdateRequestService:
         update_request_repo: IFamilyUpdateRequestRepository,
         family_repo: IFamilyRepository,
         member_repo: IMemberRepository,
+        audit_service: AuditService | None = None,
     ):
         self.update_request_repo = update_request_repo
         self.family_repo = family_repo
         self.member_repo = member_repo
+        self.audit = audit_service
 
     async def create_request(
-        self, family_id: int, update_request: UpdateRequestCreate
+        self,
+        family_id: int,
+        update_request: UpdateRequestCreate,
+        actor: User | dict | None = None,
     ) -> FamilyUpdateRequest:
         try:
             match update_request.request_type:
@@ -73,7 +84,23 @@ class UpdateRequestService:
             family_id=family_id,
             type=update_request.request_type,
         )
-        return await self.update_request_repo.create(family_id, update_request)
+        req = await self.update_request_repo.create(family_id, update_request)
+        if self.audit:
+            await self.audit.log(
+                actor,
+                AuditAction.UPDATE_REQUEST_CREATED,
+                "update_request",
+                req.id,
+                details={"family_id": family_id, "request_type": str(update_request.request_type)},
+            )
+        return req
+
+    async def get_family_requests(
+        self, family_id: int
+    ) -> list[FamilyUpdateRequest]:
+        return await self.update_request_repo.get_all(
+            family_id=family_id, request_status=None, limit=1000
+        )
 
     async def get_scoped_pending_requests(
         self, current_user: User | dict
@@ -166,9 +193,18 @@ class UpdateRequestService:
             raise ValidationError(code="Invalid_Payload", message=str(e))
 
         reviewer_id = current_user.id
-        return await self.update_request_repo.update(
+        result = await self.update_request_repo.update(
             req.id, UpdateRequestStatus.APPROVED, reviewer_id
         )
+        if self.audit:
+            await self.audit.log(
+                current_user,
+                AuditAction.UPDATE_REQUEST_APPROVED,
+                "update_request",
+                req.id,
+                details={"family_id": req.family_id, "request_type": str(req.request_type)},
+            )
+        return result
 
     async def reject_request(
         self, req_id: int, current_user: User
@@ -188,6 +224,15 @@ class UpdateRequestService:
         verify_family_scope(current_user, req.family)
 
         reviewer_id = current_user.id
-        return await self.update_request_repo.update(
+        result = await self.update_request_repo.update(
             req.id, UpdateRequestStatus.REJECTED, reviewer_id
         )
+        if self.audit:
+            await self.audit.log(
+                current_user,
+                AuditAction.UPDATE_REQUEST_REJECTED,
+                "update_request",
+                req.id,
+                details={"family_id": req.family_id, "request_type": str(req.request_type)},
+            )
+        return result

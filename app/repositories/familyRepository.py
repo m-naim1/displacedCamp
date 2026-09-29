@@ -24,7 +24,9 @@ class FamilyRepository(IFamilyRepository):
         if existing_head.scalar_one_or_none():
             raise ConflictError(
                 code="family_already_exists",
-                message=f"The head member with id {family_data.head_id} already exists.",
+                message=(
+                    f"The head member with id {family_data.head_id} already exists."
+                ),
             )
         family = Family(
             **family_data.model_dump(exclude={"members", "head_id", "spouse_id"})
@@ -37,7 +39,7 @@ class FamilyRepository(IFamilyRepository):
     async def get_all(
         self, filters: FamilyFilterParams, skip: int = 0, limit: int = 100
     ) -> list[Family]:
-        query = select(Family)
+        query = select(Family).options(joinedload(Family.head))
 
         # Single-value filters (Equality)
         if filters.is_active is not None:
@@ -58,8 +60,6 @@ class FamilyRepository(IFamilyRepository):
             )
         if filters.shelter_block_id:
             query = query.where(Family.shelter_block_id.in_(filters.shelter_block_id))
-        if filters.current_city_id:
-            query = query.where(Family.current_city_id.in_(filters.current_city_id))
         if filters.original_city_id:
             query = query.where(Family.original_city_id.in_(filters.original_city_id))
         if filters.shelter_quality_id:
@@ -67,19 +67,28 @@ class FamilyRepository(IFamilyRepository):
                 Family.shelter_quality_id.in_(filters.shelter_quality_id)
             )
 
-        # --- GOVERNOR FILTERS (Requires joining City table) ---
-        if filters.current_governor_id or filters.original_governor_id:
-            CurrentCity = aliased(City)
-            OriginalCity = aliased(City)
-
+        # --- CITY / GOVERNOR FILTERS (via ShelterCenter for current) ---
+        if filters.current_city_id or filters.current_governor_id:
+            CurrentShelterCenter = aliased(ShelterCenter)
+            query = query.join(
+                CurrentShelterCenter,
+                Family.current_shelter_center_id == CurrentShelterCenter.id,
+            )
+            if filters.current_city_id:
+                query = query.where(
+                    CurrentShelterCenter.city_id.in_(filters.current_city_id)
+                )
             if filters.current_governor_id:
+                CurrentCity = aliased(City)
                 query = query.join(
-                    CurrentCity, Family.current_city_id == CurrentCity.id
+                    CurrentCity, CurrentShelterCenter.city_id == CurrentCity.id
                 ).where(CurrentCity.governor_id.in_(filters.current_governor_id))
-            if filters.original_governor_id:
-                query = query.join(
-                    OriginalCity, Family.original_city_id == OriginalCity.id
-                ).where(OriginalCity.governor_id.in_(filters.original_governor_id))
+
+        if filters.original_governor_id:
+            OriginalCity = aliased(City)
+            query = query.join(
+                OriginalCity, Family.original_city_id == OriginalCity.id
+            ).where(OriginalCity.governor_id.in_(filters.original_governor_id))
 
         # Text search filters
         if filters.phone_number:
@@ -176,6 +185,20 @@ class FamilyRepository(IFamilyRepository):
         age_expr = func.date_part(
             "year", func.age(func.current_date(), Member.date_of_birth)
         )
+
+        # Core set of family ids the report should cover (used to scope the
+        # member aggregation subquery so it never scans the whole members table).
+        scoped_family_ids = select(Family.id)
+        if shelter_center_id:
+            scoped_family_ids = scoped_family_ids.where(
+                Family.current_shelter_center_id == shelter_center_id
+            )
+        if shelter_block_ids:
+            scoped_family_ids = scoped_family_ids.where(
+                Family.shelter_block_id.in_(shelter_block_ids)
+            )
+        if selected_ids:
+            scoped_family_ids = scoped_family_ids.where(Family.id.in_(selected_ids))
 
         # 1. Subquery to aggregate member stats per family
         member_agg = (
@@ -348,6 +371,7 @@ class FamilyRepository(IFamilyRepository):
                 ).label("pregnant_or_breastfeeding_any"),
                 func.max(case((age_expr >= 18, 1), else_=0)).label("has_adult"),
             )
+            .where(Member.family_id.in_(scoped_family_ids))
             .group_by(Member.family_id)
             .subquery()
         )

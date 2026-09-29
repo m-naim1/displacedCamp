@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     ADMIN_PASSWORD: str = ""
     ADMIN_EMAIL: str = ""
 
+    CORS_ORIGINS: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
+
+    # Rate limiting for public auth endpoints (per client IP)
+    AUTH_RATE_LIMIT: str = "10/minute"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True,

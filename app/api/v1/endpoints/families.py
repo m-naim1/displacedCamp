@@ -1,12 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 
 from app.api.deps import (
+    get_audit_service,
     get_family_service,
     get_member_service,
     get_update_request_service,
     require_role,
 )
-from app.models.enums import UserRole
+from app.core.errors import ConflictError, DomainError, ValidationError
+from app.models.enums import AuditAction, UserRole
 from app.models.user import User
 from app.schemas.family import (
     FamilyCreate,
@@ -17,9 +19,12 @@ from app.schemas.family import (
     MemberResponse,
     MemberUpdate,
     UpdateRequestCreate,
+    UpdateRequestResponse,
 )
 from app.schemas.filters import FamilyFilterParams, MemberFilterParams
+from app.services.audit_service import AuditService
 from app.services.family_service import FamilyService, MemberService
+from app.services.import_service import parse_families_csv
 from app.services.update_request_service import UpdateRequestService
 
 router = APIRouter()
@@ -41,7 +46,60 @@ async def create_new_family(
     )
 
 
-@router.get("/{family_id}", response_model=FamilyResponse)
+@router.post("/import", status_code=status.HTTP_200_OK)
+async def import_families_csv(
+    file: UploadFile = File(...),
+    family_service: FamilyService = Depends(get_family_service),
+    audit_service: AuditService = Depends(get_audit_service),
+    current_user: User = Depends(require_role(UserRole.SUPERADMIN, UserRole.MANAGER)),
+):
+    """
+    Bulk-register families from a CSV file (one row per member; rows grouped
+    by `family_code`; the `is_head=true` row carries family-level fields).
+    Valid families are created; invalid ones are reported, not fatal.
+    """
+    if (file.content_type or "") not in {"text/csv", "application/csv", ""} and not (
+        file.filename or ""
+    ).lower().endswith(".csv"):
+        raise HTTPException(status_code=400, detail="Please upload a .csv file")
+
+    content = (await file.read()).decode("utf-8-sig")
+    parsed = parse_families_csv(content)
+
+    created: list[int] = []
+    # Re-check families that are duplicates of already-imported codes
+    seen_errors = [
+        {"row": e.row, "family_code": e.family_code, "message": e.message}
+        for e in parsed.errors
+    ]
+    for family_in in parsed.families:
+        try:
+            family = await family_service.create_family(
+                family_in=family_in, current_user=current_user
+            )
+            created.append(family.id)
+        except (ConflictError, DomainError, ValidationError) as e:
+            seen_errors.append(
+                {"row": 0, "family_code": f"#{family_in.head_id}", "message": e.message}
+            )
+
+    if created:
+        await audit_service.log(
+            current_user,
+            AuditAction.BULK_IMPORT,
+            "family",
+            details={"created_count": len(created), "failed_count": len(seen_errors)},
+        )
+
+    return {
+        "created_count": len(created),
+        "created_family_ids": created,
+        "failed_count": len(seen_errors),
+        "errors": seen_errors,
+    }
+
+
+@router.get("/{family_id:int}", response_model=FamilyResponse)
 async def read_family(
     family_id: int,
     family_service: FamilyService = Depends(get_family_service),
@@ -80,7 +138,7 @@ async def read_families(
     )
 
 
-@router.put("/{family_id}", response_model=FamilyResponse)
+@router.put("/{family_id:int}", response_model=FamilyResponse)
 async def update_family_details(
     family_id: int,
     family_update: FamilyUpdate,
@@ -218,10 +276,33 @@ async def request_family_update(
     ):
         raise HTTPException(status_code=403, detail="Only families can request updates")
     new_req = await update_req_service.create_request(
-        current_user.get("family_id", -1), req_in
+        current_user.get("family_id", -1), req_in, actor=current_user
     )
 
     return {"message": "Update request submitted for manager review", "id": new_req.id}
+
+
+@router.get(
+    "/me/update-requests",
+    response_model=list[UpdateRequestResponse],
+    status_code=status.HTTP_200_OK,
+    tags=["update-request"],
+)
+async def get_my_update_requests(
+    current_user=Depends(require_role(UserRole.FAMILY)),
+    update_req_service: UpdateRequestService = Depends(get_update_request_service),
+):
+    """Families can view all their own update requests (any status)."""
+    if (
+        not isinstance(current_user, dict)
+        or current_user.get("role") != UserRole.FAMILY
+    ):
+        raise HTTPException(
+            status_code=403, detail="Only family users can access this endpoint"
+        )
+    return await update_req_service.get_family_requests(
+        current_user.get("family_id", -1)
+    )
 
 
 @router.get(

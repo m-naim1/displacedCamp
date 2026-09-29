@@ -6,7 +6,7 @@ from sqlalchemy.orm import joinedload
 
 from app.core.errors import NotFoundError
 from app.models.enums import UpdateRequestStatus, UpdateRequestType
-from app.models.family import FamilyUpdateRequest
+from app.models.family import Family, FamilyUpdateRequest
 from app.repositories.base import IFamilyUpdateRequestRepository
 from app.schemas.family import UpdateRequestCreate
 
@@ -42,7 +42,7 @@ class FamilyUpdateRequestRepository(IFamilyUpdateRequestRepository):
         shelter_center_id: int | None = None,
         block_id: int | None = None,
         family_id: int | None = None,
-        request_status: UpdateRequestStatus = UpdateRequestStatus.PENDING,
+        request_status: UpdateRequestStatus | None = UpdateRequestStatus.PENDING,
         request_type: UpdateRequestType | None = None,
         skip: int = 0,
         limit: int = 20,
@@ -51,19 +51,23 @@ class FamilyUpdateRequestRepository(IFamilyUpdateRequestRepository):
         get all family updates request based on shelter_center_id , block_id
             and family_id
         """
-        query = (
-            select(FamilyUpdateRequest)
-            .options(joinedload(FamilyUpdateRequest.family))
-            .where(FamilyUpdateRequest.status == request_status)
+        query = select(FamilyUpdateRequest).options(
+            joinedload(FamilyUpdateRequest.family)
         )
+        if request_status is not None:
+            query = query.where(FamilyUpdateRequest.status == request_status)
         if shelter_center_id:
             query = query.where(
-                FamilyUpdateRequest.family.shelter_center_id == shelter_center_id
+                FamilyUpdateRequest.family.has(
+                    Family.current_shelter_center_id == shelter_center_id
+                )
             )
         if block_id:
-            query = query.where(FamilyUpdateRequest.family.block_id == block_id)
+            query = query.where(
+                FamilyUpdateRequest.family.has(Family.shelter_block_id == block_id)
+            )
         if family_id:
-            query = query.where(FamilyUpdateRequest.family.family_id == family_id)
+            query = query.where(FamilyUpdateRequest.family_id == family_id)
         if request_type:
             query = query.where(FamilyUpdateRequest.request_type == request_type)
         result = await self.db.execute(

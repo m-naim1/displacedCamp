@@ -1,0 +1,26 @@
+{
+  "name": "camp-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tanstack/solid-query": "^5.101.4",
+    "@tanstack/solid-router": "^1.170.29",
+    "solid-js": "^1.9.9",
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "@tanstack/router-plugin": "^1.168.34",
+    "@types/node": "^26.2.0",
+    "@unocss/reset": "^66.5.2",
+    "typescript": "^5.9.2",
+    "unocss": "^66.5.2",
+    "vite": "^7.1.9",
+    "vite-plugin-solid": "^2.11.8"
+  }
+}

@@ -6,13 +6,17 @@ import structlog
 import uvicorn
 from asgi_correlation_id import CorrelationIdMiddleware, correlation_id
 from fastapi import FastAPI, Request, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
 from starlette.middleware.sessions import SessionMiddleware
 from starlette_admin.contrib.sqla import Admin, ModelView
 
 from app.admin import AdminAuthProvider, DashboardView, UserAdminView
+from app.api.v1.endpoints.auth import limiter as auth_limiter
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.errors import ConflictError, DomainError, NotFoundError, ValidationError
@@ -75,6 +79,15 @@ app = FastAPI(
 # 1. Add SessionMiddleware FIRST (Innermost layer)
 app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)
 
+# CORS for the SPA frontend (Vite dev server; adjust origins for production)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 # 2. Define your custom access logger (Middle layer)
 @app.middleware("http")
@@ -117,6 +130,10 @@ async def custom_access_log(request: Request, call_next):
 
 # 3. Add CorrelationIdMiddleware LAST (Outermost layer - Runs FIRST on incoming requests!)
 app.add_middleware(CorrelationIdMiddleware)
+
+# ── Rate limiting (public auth endpoints; see endpoints/auth.py) ─────────────
+app.state.limiter = auth_limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # 4. Instrument Prometheus (Usually added after Correlation ID)
 Instrumentator().instrument(app).expose(

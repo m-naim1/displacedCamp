@@ -1,0 +1,42 @@
+import type { FamilyReportRow, MemberReportRow } from '@/schemas'
+
+export const familyColumnsSpec: { key: keyof FamilyReportRow; label: string }[] = [
+  { key: 'family_id', label: 'ID' },
+  { key: 'head_name', label: 'head' },
+  { key: 'head_id_number', label: 'nationalId' },
+  { key: 'spouse_name', label: 'spouse' },
+  { key: 'phone_1', label: 'primaryPhone' },
+  { key: 'original_city', label: 'originalCity' },
+  { key: 'site', label: 'shelterCenter' },
+  { key: 'block', label: 'shelterBlock' },
+  { key: 'shelter_type', label: 'housingType' },
+  { key: 'member_count', label: 'membersCount' },
+  { key: 'male_count', label: 'male' },
+  { key: 'female_count', label: 'female' },
+  { key: 'under_5_count', label: 'under5' },
+  { key: 'under_18_count', label: 'under18' },
+  { key: 'elderly_60_plus_count', label: 'elderly60' },
+  { key: 'pregnant_count', label: 'pregnant' },
+  { key: 'breastfeeding_count', label: 'breastfeeding' },
+  { key: 'chronic_count', label: 'hasChronic' },
+  { key: 'injured_count', label: 'injured' },
+  { key: 'disabled_count', label: 'disabled' },
+]
+
+export const memberColumnsSpec: { key: keyof MemberReportRow; label: string }[] = [
+  { key: 'member_name', label: 'memberName' },
+  { key: 'member_id_number', label: 'nationalId' },
+  { key: 'family_id', label: 'family' },
+  { key: 'family_head_name', label: 'head' },
+  { key: 'age', label: 'age' },
+  { key: 'gender', label: 'gender' },
+  { key: 'relation', label: 'relationship' },
+  { key: 'marital_status', label: 'maritalStatus' },
+  { key: 'site', label: 'shelterCenter' },
+  { key: 'block', label: 'shelterBlock' },
+  { key: 'chronic_disease', label: 'hasChronic' },
+  { key: 'injured', label: 'injured' },
+  { key: 'disabled', label: 'disabled' },
+  { key: 'pregnant', label: 'pregnant' },
+  { key: 'breastfeeding', label: 'breastfeeding' },
+]

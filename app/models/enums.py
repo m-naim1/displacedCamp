@@ -48,3 +48,28 @@ class UpdateRequestStatus(StrEnum):
     PENDING = "PENDING"
     APPROVED = "APPROVED"
     REJECTED = "REJECTED"
+
+
+class AuditAction:
+    """Plain string constants (not an enum) so new actions don't need a
+    migration or check-constraint change on the audit_logs table."""
+
+    # families
+    FAMILY_CREATED = "FAMILY_CREATED"
+    FAMILY_UPDATED = "FAMILY_UPDATED"
+    FAMILY_ARCHIVED = "FAMILY_ARCHIVED"
+    FAMILY_RESTORED = "FAMILY_RESTORED"
+    # members
+    MEMBER_ADDED = "MEMBER_ADDED"
+    MEMBER_UPDATED = "MEMBER_UPDATED"
+    MEMBER_DELETED = "MEMBER_DELETED"
+    # family self-service
+    UPDATE_REQUEST_CREATED = "UPDATE_REQUEST_CREATED"
+    UPDATE_REQUEST_APPROVED = "UPDATE_REQUEST_APPROVED"
+    UPDATE_REQUEST_REJECTED = "UPDATE_REQUEST_REJECTED"
+    # users
+    USER_CREATED = "USER_CREATED"
+    USER_UPDATED = "USER_UPDATED"
+    USER_DEACTIVATED = "USER_DEACTIVATED"
+    # bulk operations
+    BULK_IMPORT = "BULK_IMPORT"
