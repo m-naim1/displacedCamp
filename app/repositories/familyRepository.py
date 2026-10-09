@@ -175,6 +175,8 @@ class FamilyRepository(IFamilyRepository):
         shelter_center_id: int | None = None,
         shelter_block_ids: list[int] | None = None,
         selected_ids: list[int] | None = None,
+        limit: int | None = None,
+        skip: int | None = None,
     ) -> list[dict]:
         HeadMember = aliased(Member)
         SpouseMember = aliased(Member)
@@ -503,6 +505,9 @@ class FamilyRepository(IFamilyRepository):
             stmt = stmt.where(Family.shelter_block_id.in_(shelter_block_ids))
         if selected_ids:
             stmt = stmt.where(Family.id.in_(selected_ids))
+
+        if limit is not None:
+            stmt = stmt.offset(skip).limit(limit)
 
         result = await self.db.execute(stmt)
         return [dict(row) for row in result.mappings().all()]

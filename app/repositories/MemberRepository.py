@@ -180,6 +180,8 @@ class MemberRepository(IMemberRepository):
         shelter_block_ids: list[int] | None = None,
         special_only: bool = False,
         selected_ids: list[int] | None = None,
+        limit: int | None = None,
+        skip: int | None = None,
     ) -> list[dict]:
         HeadMember = aliased(Member)
         age_expr = func.date_part(
@@ -200,9 +202,9 @@ class MemberRepository(IMemberRepository):
         if selected_ids:
             scoped_family_ids = scoped_family_ids.where(
                 Family.id.in_(
-                    select(Family.id).join(Member, Member.family_id == Family.id).where(
-                        Member.id.in_(selected_ids)
-                    )
+                    select(Family.id)
+                    .join(Member, Member.family_id == Family.id)
+                    .where(Member.id.in_(selected_ids))
                 )
             )
 
@@ -290,6 +292,8 @@ class MemberRepository(IMemberRepository):
                     Member.has_chronic_disease == True,
                 )
             )
+        if limit is not None:
+            stmt = stmt.offset(skip).limit(limit)
 
         result = await self.db.execute(stmt)
         return [dict(row) for row in result.mappings().all()]

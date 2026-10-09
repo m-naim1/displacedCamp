@@ -1,4 +1,5 @@
 # app/services/report_service.py
+import asyncio
 import csv
 import io
 from collections.abc import Sequence
@@ -32,7 +33,10 @@ class ReportService:
         current_user: User,
         block_ids: list[int] | None = None,
         selected_ids: list[int] | None = None,
+        skip: int = 0,
+        limit: int | None = None,
     ) -> list[FamilyReportRow]:
+
         shelter_id, scope_block_ids = self._get_scope(current_user)
         effective_blocks = scope_block_ids if scope_block_ids else block_ids
 
@@ -40,8 +44,12 @@ class ReportService:
             shelter_center_id=shelter_id,
             shelter_block_ids=effective_blocks,
             selected_ids=selected_ids,
+            skip=skip,
+            limit=limit,
         )
-        return [FamilyReportRow(**row) for row in raw_data]
+        return await asyncio.to_thread(
+            lambda: [FamilyReportRow(**row) for row in raw_data]
+        )
 
     async def get_members_report(
         self,
@@ -49,7 +57,10 @@ class ReportService:
         block_ids: list[int] | None = None,
         special_only: bool = False,
         selected_ids: list[int] | None = None,
+        skip: int = 0,
+        limit: int | None = None,
     ) -> list[MemberReportRow]:
+
         shelter_id, scope_block_ids = self._get_scope(current_user)
         effective_blocks = scope_block_ids if scope_block_ids else block_ids
 
@@ -58,8 +69,12 @@ class ReportService:
             shelter_block_ids=effective_blocks,
             special_only=special_only,
             selected_ids=selected_ids,
+            skip=skip,
+            limit=limit,
         )
-        return [MemberReportRow(**row) for row in raw_data]
+        return await asyncio.to_thread(
+            lambda: [MemberReportRow(**row) for row in raw_data]
+        )
 
     def generate_csv(
         self, data: Sequence[BaseModel], selected_columns: Sequence[str] | None = None

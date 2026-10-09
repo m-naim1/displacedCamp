@@ -11,13 +11,18 @@ router = APIRouter()
 
 @router.get("/families")
 async def get_families_report(
+    page: int = Query(1, ge=1),
+    limit: int = Query(100, ge=1, le=1000),
     block_ids: list[int] | None = Query(None),
     service: ReportService = Depends(get_report_service),
     current_user=Depends(
         require_role(UserRole.MANAGER, UserRole.BLOCK_HEAD, UserRole.SUPERADMIN)
     ),
 ):
-    return await service.get_families_report(current_user, block_ids)
+    skip = (page - 1) * limit
+    return await service.get_families_report(
+        current_user, block_ids, selected_ids=None, skip=skip, limit=limit
+    )
 
 
 @router.get("/families/export")
@@ -39,14 +44,19 @@ async def export_families_report(
 
 @router.get("/members")
 async def get_members_report(
+    page: int = Query(1, ge=1),
+    limit: int = Query(100, ge=1, le=1000),
     block_ids: list[int] | None = Query(None),
     special_only: bool = Query(False),
     service: ReportService = Depends(get_report_service),
     current_user=Depends(
         require_role(UserRole.MANAGER, UserRole.BLOCK_HEAD, UserRole.SUPERADMIN)
     ),
-):
-    return await service.get_members_report(current_user, block_ids, special_only)
+  ):
+  skip = (page - 1) * limit
+  return await service.get_members_report(
+      current_user, block_ids, special_only, selected_ids=None, skip=skip, limit=limit
+  )
 
 
 @router.get("/members/export")

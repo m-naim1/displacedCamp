@@ -32,7 +32,7 @@ NUM_CAMPS = 6_000
 NUM_FAMILIES = 100_000
 BLOCKS_PER_CAMP = (3, 5)
 MEMBERS_PER_FAMILY = (2, 7)
-BATCH_SIZE = 2_000
+BATCH_SIZE = 500
 
 CITY_IDS = list(range(1, 21))
 QUALITY_IDS = [1, 2, 3]
@@ -320,18 +320,25 @@ def generate_families(camps, camp_blocks) -> tuple[list[dict], list[dict]]:
 
 
 # ── Main ────────────────────────────────────────────────────────────────
-
 async def main():
     t0 = time.time()
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        
+        # 🛠️ FIX SCHEMA MISMATCHES
+        # 1. Drop the ghost 'current_city_id' column that was removed from the model 
+        #    but accidentally left in the database during migration 828d7e30f902.
+        await conn.execute(text("ALTER TABLE families DROP COLUMN IF EXISTS current_city_id;"))
+        
+        # 2. Allow 'shelter_block_id' to be NULL to match the Python model definition.
+        await conn.execute(text("ALTER TABLE families ALTER COLUMN shelter_block_id DROP NOT NULL;"))
+
         # Clear existing generated data for clean re-runs
         await conn.execute(text("TRUNCATE TABLE members CASCADE"))
         await conn.execute(text("TRUNCATE TABLE families CASCADE"))
         await conn.execute(text("TRUNCATE TABLE shelter_block CASCADE"))
         await conn.execute(text("DELETE FROM shelter_centers WHERE id > 3"))
-        await conn.execute(text("ALTER SEQUENCE shelter_centers_id_seq RESTART WITH 4"))
         print("Cleared old data.\n")
 
     print("Tables verified.\n")
@@ -346,7 +353,7 @@ async def main():
     families, members = generate_families(camps, camp_blocks)
 
     async with AsyncSessionLocal() as session:
-        print("\nInserting camps...")
+        print("Inserting camps...")
         await bulk_insert(session, ShelterCenter, camps)
         await session.commit()
         print("  ✓ done\n")
@@ -375,13 +382,24 @@ async def main():
         await session.commit()
         print("  ✓ done\n")
 
+    # ── Sync sequences and Analyze ─────────────────────────────
+    print("Syncing sequences and analyzing database...")
+    async with engine.begin() as conn:
+        # Fix the auto-increment counters so future API inserts don't fail
+        await conn.execute(text("SELECT setval('families_id_seq', (SELECT MAX(id) FROM families));"))
+        await conn.execute(text("SELECT setval('shelter_centers_id_seq', (SELECT MAX(id) FROM shelter_centers));"))
+        await conn.execute(text("SELECT setval('shelter_block_id_seq', (SELECT MAX(id) FROM shelter_block));"))
+        
+        # Tell Postgres about the 500K rows so the query planner uses indexes
+        await conn.execute(text("ANALYZE;"))
+    print("  ✓ Database optimized and ready!\n")
+
     elapsed = time.time() - t0
     print(f"Done in {elapsed:.1f}s")
     print(f"  Camps:    {NUM_CAMPS}")
     print(f"  Blocks:   {len(blocks)}")
     print(f"  Families: {NUM_FAMILIES}")
     print(f"  Members:  {len(members)}")
-
-
+    
 if __name__ == "__main__":
     asyncio.run(main())
