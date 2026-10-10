@@ -12,25 +12,12 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
-from starlette.middleware.sessions import SessionMiddleware
-from starlette_admin.contrib.sqla import Admin, ModelView
 
-from app.admin import AdminAuthProvider, DashboardView, UserAdminView
 from app.api.v1.endpoints.auth import limiter as auth_limiter
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.errors import ConflictError, DomainError, NotFoundError, ValidationError
-from app.db.session import AsyncSessionLocal, engine
-from app.models.family import Family, Member
-from app.models.lookups import (
-    City,
-    Governor,
-    RelationshipToHead,
-    ShelterBlock,
-    ShelterCenter,
-    ShelterQuality,
-)
-from app.models.user import User
+from app.db.session import AsyncSessionLocal
 
 # ── Startup validation ────────────────────────────────────────────────────────
 if settings.SECRET_KEY == "change-me":
@@ -73,12 +60,6 @@ app = FastAPI(
 # ── Middleware ────────────────────────────────────────────────────────────────
 # Add Correlation ID middleware (Generates X-Request-ID header)
 
-
-# ── Middleware ────────────────────────────────────────────────────────────────
-
-# 1. Add SessionMiddleware FIRST (Innermost layer)
-app.add_middleware(SessionMiddleware, secret_key=settings.SECRET_KEY)
-
 # CORS for the SPA frontend (Vite dev server; adjust origins for production)
 app.add_middleware(
     CORSMiddleware,
@@ -89,7 +70,7 @@ app.add_middleware(
 )
 
 
-# 2. Define your custom access logger (Middle layer)
+# Custom access logger
 @app.middleware("http")
 async def custom_access_log(request: Request, call_next):
     # 🛑 Ignore Prometheus and Health check noise
@@ -128,14 +109,14 @@ async def custom_access_log(request: Request, call_next):
     return response
 
 
-# 3. Add CorrelationIdMiddleware LAST (Outermost layer - Runs FIRST on incoming requests!)
+# Add CorrelationIdMiddleware LAST (Outermost layer - Runs FIRST on incoming requests!)
 app.add_middleware(CorrelationIdMiddleware)
 
 # ── Rate limiting (public auth endpoints; see endpoints/auth.py) ─────────────
 app.state.limiter = auth_limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# 4. Instrument Prometheus (Usually added after Correlation ID)
+# Instrument Prometheus (Usually added after Correlation ID)
 Instrumentator().instrument(app).expose(
     app, endpoint="/metrics", include_in_schema=False
 )
@@ -219,30 +200,6 @@ async def global_unhandled_exception_handler(request: Request, exc: Exception):
     )
 
 
-admin = Admin(
-    engine=engine,
-    title="Displaced Camp Admin",
-    templates_dir="templates",  # ← tells admin where your templates folder is
-    auth_provider=AdminAuthProvider(),
-    index_view=DashboardView(
-        label="Dashboard",
-        icon="fa fa-home",
-        path="/",
-        add_to_menu=False,  # already the home page, no need to show in sidebar
-    ),
-)
-admin.add_view(UserAdminView(User, label="Users"))
-admin.add_view(ModelView(Family))
-admin.add_view(ModelView(Member))
-admin.add_view(ModelView(Governor))
-admin.add_view(ModelView(City))
-admin.add_view(ModelView(RelationshipToHead))
-admin.add_view(ModelView(ShelterQuality))
-admin.add_view(ModelView(ShelterCenter))
-admin.add_view(ModelView(ShelterBlock))
-
-admin.mount_to(app)
-
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
 
@@ -266,7 +223,7 @@ async def health_check():
         )
 
 
-# 3. Main execution block to run the app using Uvicorn
+# Main execution block to run the app using Uvicorn
 if __name__ == "__main__":
     # The uvicorn.run() function starts the server.
     # The first argument specifies the application: "main:app"
